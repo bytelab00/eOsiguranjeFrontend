@@ -7,6 +7,7 @@ import Dashboard from "./components/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import useAuth from "./hooks/useAuth";
 import AdminDashboard from "./components/AdminDashboard";
+import SuccessPage from "./components/SuccessPage.jsx";
 
 
 function Navbar({ token, onLogout }) {
@@ -311,6 +312,7 @@ export default function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginScreen />} />
                     <Route path="/verify" element={<Verify2FA onToken={loginWithToken} />} />
+                    <Route path="/success" element={<SuccessPage />} />
                     <Route
                         path="/dashboard"
                         element={
