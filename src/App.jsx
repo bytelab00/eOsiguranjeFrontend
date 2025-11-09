@@ -9,7 +9,7 @@ import useAuth from "./hooks/useAuth";
 import AdminDashboard from "./components/AdminDashboard";
 import SuccessPage from "./components/SuccessPage.jsx";
 
-
+// npm run dev -- --host 0.0.0.0
 function Navbar({ token, onLogout }) {
     return (
         <nav

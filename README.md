@@ -18,22 +18,36 @@ Follow these steps to get your development environment up and running.
 ### Installation
 
 1.  **Clone the repository:**
-    ```bash
+```bash
     git clone https://github.com/bytelab00/eOsiguranjeFrontend
     cd eOsiguranje
-    ```
+```
 
 2.  **Install dependencies:**
-    ```bash
+```bash
     npm install
     # or yarn install
     # or pnpm install
-    ```
+```
 
 ### Running the App
 
 Start the development server with **Hot Module Replacement (HMR)**:
-
 ```bash
 npm run dev
 # The app will typically be available at http://localhost:5173/
+```
+
+---
+
+## 📸 Screenshots
+
+![Application Screenshot 1](images/image1.png)
+
+![Application Screenshot 2](images/image2.png)
+
+---
+
+## 🔗 Backend
+
+Backend Spring Boot application is located in a separate repository.
