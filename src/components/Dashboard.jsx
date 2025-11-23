@@ -15,7 +15,7 @@ export default function Dashboard({ user }) {
     const fetchPolicies = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("accessToken");
             const response = await axios.get(
                 "http://localhost:8080/api/policies",
                 {
@@ -37,7 +37,7 @@ export default function Dashboard({ user }) {
     const handlePurchase = async (policyId) => {
         try {
             setPurchasing(policyId);
-            const token = localStorage.getItem("token");
+            const token = localStorage.getItem("accessToken");
             const response = await axios.post(
                 `http://localhost:8080/api/purchase/create-checkout-session?policyId=${policyId}`,
                 {},

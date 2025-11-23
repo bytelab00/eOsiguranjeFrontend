@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import useAuth from "./hooks/useAuth";
 import AdminDashboard from "./components/AdminDashboard";
 import SuccessPage from "./components/SuccessPage.jsx";
+import CancelPage from "./components/CancelPage.jsx";
 
 // npm run dev -- --host 0.0.0.0
 function Navbar({ token, onLogout }) {
@@ -322,6 +323,7 @@ export default function App() {
                     <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginScreen />} />
                     <Route path="/verify" element={<Verify2FA onToken={loginWithToken} />} />
                     <Route path="/success" element={<SuccessPage />} />
+                    <Route path="/cancel" element={<CancelPage />} />
                     <Route
                         path="/dashboard"
                         element={

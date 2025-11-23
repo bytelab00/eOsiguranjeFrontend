@@ -5,7 +5,19 @@ export default function SuccessPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Automatski redirect na dashboard nakon 3 sekunde
+        // 1. GET SESSION ID FROM URL
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session_id');
+
+        // 2. CALL BACKEND TO LOG SUCCESS
+        if (sessionId) {
+            fetch(`http://localhost:8080/api/purchase/success?session_id=${sessionId}`)
+                .then(res => res.json())
+                .then(data => console.log('Purchase logged:', data))
+                .catch(err => console.error('Error logging purchase:', err));
+        }
+
+        // 3. REDIRECT AFTER 3 SECONDS
         const timer = setTimeout(() => {
             navigate("/dashboard");
         }, 3000);
