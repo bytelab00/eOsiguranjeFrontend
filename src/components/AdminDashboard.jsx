@@ -194,6 +194,7 @@ export default function AdminDashboard({ user, onLogout }) {
                             }}>{user?.role}</span>
                             </p>
                         </div>
+                        {/*
                         <button
                             onClick={onLogout}
                             style={{
@@ -218,6 +219,7 @@ export default function AdminDashboard({ user, onLogout }) {
                         >
                             Odjavi se
                         </button>
+                        */}
                     </div>
                 </div>
 

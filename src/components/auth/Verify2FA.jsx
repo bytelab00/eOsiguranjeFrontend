@@ -58,12 +58,32 @@ export default function Verify2FA({ onToken }) {
         e.preventDefault();
         setError(null);
         setLoading(true);
+
         try {
-            const r = await verify2FA({ user2FAId, code });
-            onToken(r.token);
-            navigate("/dashboard");
+            // 1. Call the API
+            const response = await verify2FA({ user2FAId, code });
+
+            // 2. CRITICAL FIX: Extract data based on your backend JSON structure
+            const { accessToken, refreshToken, role } = response;
+
+            // 3. Store in LocalStorage (Required for ProtectedRoute)
+            if (accessToken) {
+                localStorage.setItem("accessToken", accessToken);
+                localStorage.setItem("refreshToken", refreshToken);
+                localStorage.setItem("userRole", role); // Optional: store role if needed
+
+                // 4. Update global state if used
+                if (onToken) onToken(accessToken);
+
+                // 5. Redirect
+                navigate("/dashboard");
+            } else {
+                throw new Error("Token missing from response");
+            }
+
         } catch (err) {
-            setError(err?.response?.data?.message || err.message);
+            console.error("2FA Error:", err);
+            setError("Neispravan 2FA kod ili greška na serveru.");
         } finally {
             setLoading(false);
         }

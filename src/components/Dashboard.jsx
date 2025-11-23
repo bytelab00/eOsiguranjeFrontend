@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import LogoutButton from "../components/auth/LogoutButton";
 
-export default function Dashboard({ user, onLogout }) {
+export default function Dashboard({ user }) {
     const [policies, setPolicies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -119,30 +120,20 @@ export default function Dashboard({ user, onLogout }) {
                             }}>{user?.role || "-"}</span>
                             </p>
                         </div>
-                        <button
-                            onClick={onLogout}
-                            style={{
-                                background: "#fff",
-                                color: "#667eea",
-                                border: "2px solid #667eea",
-                                borderRadius: "10px",
-                                padding: "10px 24px",
-                                cursor: "pointer",
-                                fontWeight: "600",
-                                fontSize: "15px",
-                                transition: "all 0.3s"
-                            }}
-                            onMouseEnter={(e) => {
-                                e.target.style.background = "#667eea";
-                                e.target.style.color = "#fff";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = "#fff";
-                                e.target.style.color = "#667eea";
-                            }}
-                        >
-                            Odjavi se
-                        </button>
+                        {/*
+                        <div style={{
+                            background: "#fff",
+                            color: "#667eea",
+                            border: "2px solid #667eea",
+                            borderRadius: "10px",
+                            padding: "10px 24px",
+                            fontWeight: "600",
+                            fontSize: "15px",
+                            transition: "all 0.3s"
+                        }}>
+                            <LogoutButton />
+                        </div>
+                        */}
                     </div>
                 </div>
 
