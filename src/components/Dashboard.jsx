@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../services/api"; // ✅ Use configured api instance
 import LogoutButton from "../components/auth/LogoutButton";
 
 export default function Dashboard({ user }) {
@@ -15,16 +15,8 @@ export default function Dashboard({ user }) {
     const fetchPolicies = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("accessToken");
-            const response = await axios.get(
-                "http://localhost:8080/api/policies",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
-                }
-            );
+            // ✅ Use api instance - no need to manually add token or base URL
+            const response = await api.get("/policies");
             setPolicies(response.data);
             setError(null);
         } catch (err) {
@@ -37,16 +29,9 @@ export default function Dashboard({ user }) {
     const handlePurchase = async (policyId) => {
         try {
             setPurchasing(policyId);
-            const token = localStorage.getItem("accessToken");
-            const response = await axios.post(
-                `http://localhost:8080/api/purchase/create-checkout-session?policyId=${policyId}`,
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
-                }
+            // ✅ Use api instance
+            const response = await api.post(
+                `/purchase/create-checkout-session?policyId=${policyId}`
             );
 
             // Open in same window instead of new tab
@@ -120,20 +105,6 @@ export default function Dashboard({ user }) {
                             }}>{user?.role || "-"}</span>
                             </p>
                         </div>
-                        {/*
-                        <div style={{
-                            background: "#fff",
-                            color: "#667eea",
-                            border: "2px solid #667eea",
-                            borderRadius: "10px",
-                            padding: "10px 24px",
-                            fontWeight: "600",
-                            fontSize: "15px",
-                            transition: "all 0.3s"
-                        }}>
-                            <LogoutButton />
-                        </div>
-                        */}
                     </div>
                 </div>
 
@@ -206,7 +177,7 @@ export default function Dashboard({ user }) {
                             <div style={{
                                 fontSize: "48px",
                                 marginBottom: "16px"
-                            }}>📭</div>
+                            }}>🔭</div>
                             <p style={{ fontSize: "16px" }}>Trenutno nema dostupnih polisa</p>
                         </div>
                     )}

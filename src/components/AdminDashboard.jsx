@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../services/api";
 
-export default function AdminDashboard({ user, onLogout }) {
+export default function AdminDashboard({ user }) {
     const [policies, setPolicies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -22,15 +22,8 @@ export default function AdminDashboard({ user, onLogout }) {
     const fetchPolicies = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const response = await axios.get(
-                "http://localhost:8080/api/admin/policies",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            const response = await api.get("/admin/policies");
+
             setPolicies(response.data);
             setError(null);
         } catch (err) {
@@ -68,16 +61,9 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         try {
-            const token = localStorage.getItem("token");
-            await axios.delete(
-                `http://localhost:8080/api/admin/policies/${id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-            fetchPolicies();
+            await api.delete(`/admin/policies/${id}`);
+
+            await fetchPolicies();
         } catch (err) {
             setError(err?.response?.data?.message || "Greška pri brisanju polise");
         }
@@ -98,28 +84,12 @@ export default function AdminDashboard({ user, onLogout }) {
 
             if (editingPolicy) {
                 // Update existing policy
-                await axios.put(
-                    `http://localhost:8080/api/admin/policies/${editingPolicy.id}`,
-                    payload,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
+                await api.put(`/admin/policies/${editingPolicy.id}`, payload);
+
             } else {
                 // Create new policy
-                await axios.post(
-                    "http://localhost:8080/api/admin/policies",
-                    payload,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
+                await api.post("/admin/policies", payload);
+
             }
 
             setShowModal(false);
