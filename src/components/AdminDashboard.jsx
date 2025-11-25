@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../services/api";
+import Dashboard from "./Dashboard"; // prilagodi putanju
 
 export default function AdminDashboard({ user }) {
     const [policies, setPolicies] = useState([]);
@@ -333,6 +334,26 @@ export default function AdminDashboard({ user }) {
                         >
                             👥 Korisnici
                         </button>
+                        <button
+                            onClick={() => setActiveTab("client")}
+                            style={{
+                                background: activeTab === "client"
+                                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                                    : "transparent",
+                                color: activeTab === "client" ? "#fff" : "#666",
+                                border: "none",
+                                borderRadius: "10px 10px 0 0",
+                                padding: "12px 28px",
+                                cursor: "pointer",
+                                fontWeight: "600",
+                                fontSize: "15px",
+                                transition: "all 0.3s",
+                                marginBottom: "-2px"
+                            }}
+                        >
+                            🏠 Klijentski dashboard
+                        </button>
+
                     </div>
                 </div>
 
@@ -1034,6 +1055,20 @@ export default function AdminDashboard({ user }) {
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeTab === "client" && (
+                <div
+                    style={{
+                        background: "rgba(255, 255, 255, 0.95)",
+                        backdropFilter: "blur(10px)",
+                        borderRadius: "20px",
+                        padding: "40px",
+                        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.08)"
+                    }}
+                >
+                    <Dashboard user={user} />
                 </div>
             )}
 
