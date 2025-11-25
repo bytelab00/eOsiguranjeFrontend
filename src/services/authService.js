@@ -12,5 +12,39 @@ export const login = async ({ username, password }) => {
 
 export const verify2FA = async ({ user2FAId, code }) => {
     const res = await api.post("/auth/login/verify", { user2FAId, code });
-    return res.data; // expects { token, message: "login_success"}
+    // Now expects: { accessToken, refreshToken, username, role }
+    const { accessToken, refreshToken, username, role } = res.data;
+
+    // Store both tokens
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+    localStorage.setItem("username", username);
+    localStorage.setItem("role", role);
+
+    return res.data;
+};
+
+export const refreshToken = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) {
+        throw new Error("No refresh token available");
+    }
+
+    const res = await api.post("/auth/refresh", { refreshToken });
+    const { accessToken, refreshToken: newRefreshToken, username, role } = res.data;
+
+    // Update tokens
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", newRefreshToken);
+    localStorage.setItem("username", username);
+    localStorage.setItem("role", role);
+
+    return res.data;
+};
+
+export const logout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("username");
+    localStorage.removeItem("role");
 };

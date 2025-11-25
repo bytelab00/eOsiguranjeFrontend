@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../services/api";
 
-export default function AdminDashboard({ user, onLogout }) {
+export default function AdminDashboard({ user }) {
     const [policies, setPolicies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -15,6 +15,22 @@ export default function AdminDashboard({ user, onLogout }) {
     });
     const [submitting, setSubmitting] = useState(false);
 
+    // Users state
+    const [users, setUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(true);
+    const [usersError, setUsersError] = useState(null);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [userFormData, setUserFormData] = useState({
+        username: "",
+        email: "",
+        password: "",
+        role: "CLIENT",
+        enabled: true
+    });
+    const [userSubmitting, setUserSubmitting] = useState(false);
+    const [activeTab, setActiveTab] = useState("policies"); // "policies" or "users"
+
     useEffect(() => {
         fetchPolicies();
     }, []);
@@ -22,15 +38,8 @@ export default function AdminDashboard({ user, onLogout }) {
     const fetchPolicies = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const response = await axios.get(
-                "http://localhost:8080/api/admin/policies",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            const response = await api.get("/admin/policies");
+
             setPolicies(response.data);
             setError(null);
         } catch (err) {
@@ -68,16 +77,9 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         try {
-            const token = localStorage.getItem("token");
-            await axios.delete(
-                `http://localhost:8080/api/admin/policies/${id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-            fetchPolicies();
+            await api.delete(`/admin/policies/${id}`);
+
+            await fetchPolicies();
         } catch (err) {
             setError(err?.response?.data?.message || "Greška pri brisanju polise");
         }
@@ -98,28 +100,12 @@ export default function AdminDashboard({ user, onLogout }) {
 
             if (editingPolicy) {
                 // Update existing policy
-                await axios.put(
-                    `http://localhost:8080/api/admin/policies/${editingPolicy.id}`,
-                    payload,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
+                await api.put(`/admin/policies/${editingPolicy.id}`, payload);
+
             } else {
                 // Create new policy
-                await axios.post(
-                    "http://localhost:8080/api/admin/policies",
-                    payload,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
+                await api.post("/admin/policies", payload);
+
             }
 
             setShowModal(false);
@@ -143,6 +129,110 @@ export default function AdminDashboard({ user, onLogout }) {
         return icons[type] || "📋";
     };
 
+
+    // === USER MANAGEMENT FUNCTIONS ===
+    useEffect(() => {
+        if (activeTab === "users") {
+            fetchUsers();
+        }
+    }, [activeTab]);
+
+    const fetchUsers = async () => {
+        try {
+            setUsersLoading(true);
+            const response = await api.get("/admin/users");
+            setUsers(response.data);
+            setUsersError(null);
+        } catch (err) {
+            setUsersError(err?.response?.data?.message || "Greška pri učitavanju korisnika");
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    const handleCreateUser = () => {
+        setEditingUser(null);
+        setUserFormData({
+            username: "",
+            email: "",
+            password: "",
+            role: "CLIENT",
+            enabled: true
+        });
+        setShowUserModal(true);
+    };
+
+    const handleEditUser = (user) => {
+        setEditingUser(user);
+        setUserFormData({
+            username: user.username,
+            email: user.email,
+            password: "", // ne prikazujemo postojeću lozinku
+            role: user.role,
+            enabled: user.enabled
+        });
+        setShowUserModal(true);
+    };
+
+    const handleDeleteUser = async (id) => {
+        if (!window.confirm("Da li ste sigurni da želite obrisati ovog korisnika?")) {
+            return;
+        }
+
+        try {
+            await api.delete(`/admin/users/${id}`);
+            await fetchUsers();
+        } catch (err) {
+            setUsersError(err?.response?.data?.message || "Greška pri brisanju korisnika");
+        }
+    };
+
+    const handleUserSubmit = async (e) => {
+        e.preventDefault();
+        setUserSubmitting(true);
+
+        try {
+            const payload = {
+                username: userFormData.username,
+                email: userFormData.email,
+                role: userFormData.role,
+                enabled: userFormData.enabled
+            };
+
+            // Dodaj password samo ako je popunjen
+            if (userFormData.password && userFormData.password.trim() !== "") {
+                payload.password = userFormData.password;
+            }
+
+            if (editingUser) {
+                // Update existing user
+                await api.put(`/admin/users/${editingUser.id}`, payload);
+            } else {
+                // Create new user - password je obavezan
+                if (!userFormData.password || userFormData.password.trim() === "") {
+                    setUsersError("Lozinka je obavezna za nove korisnike");
+                    setUserSubmitting(false);
+                    return;
+                }
+                await api.post("/admin/users", payload);
+            }
+
+            setShowUserModal(false);
+            fetchUsers();
+            setUsersError(null);
+        } catch (err) {
+            setUsersError(err?.response?.data?.message || "Greška pri čuvanju korisnika");
+        } finally {
+            setUserSubmitting(false);
+        }
+    };
+
+    const getRoleBadgeColor = (role) => {
+        return role === "ADMIN"
+            ? "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+            : "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)";
+    };
+
     return (
         <div style={{
             minHeight: "calc(100vh - 72px)",
@@ -154,6 +244,7 @@ export default function AdminDashboard({ user, onLogout }) {
                 margin: "0 auto"
             }}>
                 {/* Header Section */}
+                {/* Header Section with Tabs */}
                 <div style={{
                     background: "rgba(255, 255, 255, 0.95)",
                     backdropFilter: "blur(10px)",
@@ -167,7 +258,8 @@ export default function AdminDashboard({ user, onLogout }) {
                         justifyContent: "space-between",
                         alignItems: "center",
                         flexWrap: "wrap",
-                        gap: "20px"
+                        gap: "20px",
+                        marginBottom: "24px"
                     }}>
                         <div>
                             <h1 style={{
@@ -194,34 +286,453 @@ export default function AdminDashboard({ user, onLogout }) {
                             }}>{user?.role}</span>
                             </p>
                         </div>
+                    </div>
+
+                    {/* Tab Navigation */}
+                    <div style={{
+                        display: "flex",
+                        gap: "12px",
+                        borderBottom: "2px solid #f0f0f0",
+                        paddingBottom: "0"
+                    }}>
                         <button
-                            onClick={onLogout}
+                            onClick={() => setActiveTab("policies")}
                             style={{
-                                background: "#fff",
-                                color: "#f5576c",
-                                border: "2px solid #f5576c",
-                                borderRadius: "10px",
-                                padding: "10px 24px",
+                                background: activeTab === "policies"
+                                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                                    : "transparent",
+                                color: activeTab === "policies" ? "#fff" : "#666",
+                                border: "none",
+                                borderRadius: "10px 10px 0 0",
+                                padding: "12px 28px",
                                 cursor: "pointer",
                                 fontWeight: "600",
                                 fontSize: "15px",
-                                transition: "all 0.3s"
-                            }}
-                            onMouseEnter={(e) => {
-                                e.target.style.background = "#f5576c";
-                                e.target.style.color = "#fff";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = "#fff";
-                                e.target.style.color = "#f5576c";
+                                transition: "all 0.3s",
+                                marginBottom: "-2px"
                             }}
                         >
-                            Odjavi se
+                            📋 Police osiguranja
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("users")}
+                            style={{
+                                background: activeTab === "users"
+                                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                                    : "transparent",
+                                color: activeTab === "users" ? "#fff" : "#666",
+                                border: "none",
+                                borderRadius: "10px 10px 0 0",
+                                padding: "12px 28px",
+                                cursor: "pointer",
+                                fontWeight: "600",
+                                fontSize: "15px",
+                                transition: "all 0.3s",
+                                marginBottom: "-2px"
+                            }}
+                        >
+                            👥 Korisnici
                         </button>
                     </div>
                 </div>
 
                 {/* Policies Management Section */}
+                {/* Policies Management Section */}
+                {activeTab === "policies" && (
+                    <div
+                        style={{
+                            background: "rgba(255, 255, 255, 0.95)",
+                            backdropFilter: "blur(10px)",
+                            borderRadius: "20px",
+                            padding: "40px",
+                            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.08)"
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "32px",
+                                flexWrap: "wrap",
+                                gap: "16px"
+                            }}
+                        >
+                            <div>
+                                <h2
+                                    style={{
+                                        fontSize: "24px",
+                                        fontWeight: "700",
+                                        color: "#1a1a1a",
+                                        marginBottom: "8px"
+                                    }}
+                                >
+                                    Upravljanje policama osiguranja
+                                </h2>
+                                <p
+                                    style={{
+                                        color: "#666",
+                                        fontSize: "15px",
+                                        margin: 0
+                                    }}
+                                >
+                                    Kreiraj, izmijeni ili obriši police
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleCreate}
+                                style={{
+                                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: "10px",
+                                    padding: "12px 28px",
+                                    cursor: "pointer",
+                                    fontWeight: "600",
+                                    fontSize: "15px",
+                                    boxShadow: "0 4px 16px rgba(102, 126, 234, 0.3)",
+                                    transition: "all 0.3s"
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.transform = "translateY(-2px)";
+                                    e.target.style.boxShadow =
+                                        "0 6px 20px rgba(102, 126, 234, 0.4)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.transform = "translateY(0)";
+                                    e.target.style.boxShadow =
+                                        "0 4px 16px rgba(102, 126, 234, 0.3)";
+                                }}
+                            >
+                                + Nova polisa
+                            </button>
+                        </div>
+
+                        {error && (
+                            <div
+                                style={{
+                                    padding: "16px 20px",
+                                    background: "rgba(239, 68, 68, 0.1)",
+                                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                                    borderRadius: "12px",
+                                    color: "#dc2626",
+                                    fontSize: "15px",
+                                    fontWeight: "500",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "12px",
+                                    marginBottom: "24px"
+                                }}
+                            >
+                                <span style={{ fontSize: "24px" }}>⚠️</span>
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        {loading && (
+                            <div
+                                style={{
+                                    textAlign: "center",
+                                    padding: "60px 20px",
+                                    color: "#666"
+                                }}
+                            >
+                                <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
+                                <p style={{ fontSize: "16px" }}>Učitavam police...</p>
+                            </div>
+                        )}
+
+                        {!loading && policies.length === 0 && (
+                            <div
+                                style={{
+                                    textAlign: "center",
+                                    padding: "60px 20px",
+                                    color: "#666"
+                                }}
+                            >
+                                <div style={{ fontSize: "48px", marginBottom: "16px" }}>📭</div>
+                                <p style={{ fontSize: "16px", marginBottom: "20px" }}>
+                                    Nema kreiranih polisa
+                                </p>
+                                <button
+                                    onClick={handleCreate}
+                                    style={{
+                                        background:
+                                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                        color: "#fff",
+                                        border: "none",
+                                        borderRadius: "10px",
+                                        padding: "12px 28px",
+                                        cursor: "pointer",
+                                        fontWeight: "600",
+                                        fontSize: "15px"
+                                    }}
+                                >
+                                    Kreiraj prvu polisu
+                                </button>
+                            </div>
+                        )}
+
+                        {!loading && policies.length > 0 && (
+                            <div
+                                style={{
+                                    overflowX: "auto"
+                                }}
+                            >
+                                <table
+                                    style={{
+                                        width: "100%",
+                                        borderCollapse: "separate",
+                                        borderSpacing: "0 12px"
+                                    }}
+                                >
+                                    <thead>
+                                    <tr
+                                        style={{
+                                            background:
+                                                "linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)"
+                                        }}
+                                    >
+                                        <th
+                                            style={{
+                                                padding: "16px 20px",
+                                                textAlign: "left",
+                                                fontSize: "13px",
+                                                fontWeight: "700",
+                                                color: "#666",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.5px",
+                                                borderRadius: "10px 0 0 10px"
+                                            }}
+                                        >
+                                            Tip
+                                        </th>
+                                        <th
+                                            style={{
+                                                padding: "16px 20px",
+                                                textAlign: "left",
+                                                fontSize: "13px",
+                                                fontWeight: "700",
+                                                color: "#666",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.5px"
+                                            }}
+                                        >
+                                            Naziv
+                                        </th>
+                                        <th
+                                            style={{
+                                                padding: "16px 20px",
+                                                textAlign: "left",
+                                                fontSize: "13px",
+                                                fontWeight: "700",
+                                                color: "#666",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.5px"
+                                            }}
+                                        >
+                                            Opis
+                                        </th>
+                                        <th
+                                            style={{
+                                                padding: "16px 20px",
+                                                textAlign: "left",
+                                                fontSize: "13px",
+                                                fontWeight: "700",
+                                                color: "#666",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.5px"
+                                            }}
+                                        >
+                                            Cijena
+                                        </th>
+                                        <th
+                                            style={{
+                                                padding: "16px 20px",
+                                                textAlign: "right",
+                                                fontSize: "13px",
+                                                fontWeight: "700",
+                                                color: "#666",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.5px",
+                                                borderRadius: "0 10px 10px 0"
+                                            }}
+                                        >
+                                            Akcije
+                                        </th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {policies.map((policy) => (
+                                        <tr
+                                            key={policy.id}
+                                            style={{
+                                                background: "#fff",
+                                                boxShadow:
+                                                    "0 2px 8px rgba(0, 0, 0, 0.04)",
+                                                transition: "all 0.3s"
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform =
+                                                    "translateY(-2px)";
+                                                e.currentTarget.style.boxShadow =
+                                                    "0 4px 12px rgba(0, 0, 0, 0.08)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform =
+                                                    "translateY(0)";
+                                                e.currentTarget.style.boxShadow =
+                                                    "0 2px 8px rgba(0, 0, 0, 0.04)";
+                                            }}
+                                        >
+                                            <td
+                                                style={{
+                                                    padding: "20px",
+                                                    borderRadius: "10px 0 0 10px"
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "8px"
+                                                    }}
+                                                >
+                                        <span style={{ fontSize: "24px" }}>
+                                            {getPolicyIcon(policy.type)}
+                                        </span>
+                                                    <span
+                                                        style={{
+                                                            background:
+                                                                "rgba(102, 126, 234, 0.1)",
+                                                            color: "#667eea",
+                                                            padding: "4px 10px",
+                                                            borderRadius: "6px",
+                                                            fontSize: "12px",
+                                                            fontWeight: "600"
+                                                        }}
+                                                    >
+                                            {policy.type}
+                                        </span>
+                                                </div>
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "20px",
+                                                    fontWeight: "600",
+                                                    color: "#1a1a1a"
+                                                }}
+                                            >
+                                                {policy.name}
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "20px",
+                                                    color: "#666",
+                                                    fontSize: "14px",
+                                                    maxWidth: "300px"
+                                                }}
+                                            >
+                                                {policy.description}
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "20px",
+                                                    fontWeight: "700",
+                                                    color: "#667eea",
+                                                    fontSize: "18px"
+                                                }}
+                                            >
+                                                ${policy.price}
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "20px",
+                                                    textAlign: "right",
+                                                    borderRadius: "0 10px 10px 0"
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        gap: "8px",
+                                                        justifyContent: "flex-end"
+                                                    }}
+                                                >
+                                                    <button
+                                                        onClick={() =>
+                                                            handleEdit(policy)
+                                                        }
+                                                        style={{
+                                                            background: "#fff",
+                                                            color: "#667eea",
+                                                            border:
+                                                                "2px solid #667eea",
+                                                            borderRadius: "8px",
+                                                            padding: "8px 16px",
+                                                            cursor: "pointer",
+                                                            fontWeight: "600",
+                                                            fontSize: "13px",
+                                                            transition: "all 0.3s"
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.target.style.background =
+                                                                "#667eea";
+                                                            e.target.style.color = "#fff";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.target.style.background =
+                                                                "#fff";
+                                                            e.target.style.color =
+                                                                "#667eea";
+                                                        }}
+                                                    >
+                                                        ✏️ Izmijeni
+                                                    </button>
+                                                    <button
+                                                        onClick={() =>
+                                                            handleDelete(policy.id)
+                                                        }
+                                                        style={{
+                                                            background: "#fff",
+                                                            color: "#ef4444",
+                                                            border:
+                                                                "2px solid #ef4444",
+                                                            borderRadius: "8px",
+                                                            padding: "8px 16px",
+                                                            cursor: "pointer",
+                                                            fontWeight: "600",
+                                                            fontSize: "13px",
+                                                            transition: "all 0.3s"
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.target.style.background =
+                                                                "#ef4444";
+                                                            e.target.style.color = "#fff";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.target.style.background =
+                                                                "#fff";
+                                                            e.target.style.color =
+                                                                "#ef4444";
+                                                        }}
+                                                    >
+                                                        🗑️ Obriši
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Users Management Section */}
+            {activeTab === "users" && (
                 <div style={{
                     background: "rgba(255, 255, 255, 0.95)",
                     backdropFilter: "blur(10px)",
@@ -244,18 +755,18 @@ export default function AdminDashboard({ user, onLogout }) {
                                 color: "#1a1a1a",
                                 marginBottom: "8px"
                             }}>
-                                Upravljanje policama osiguranja
+                                Upravljanje korisnicima
                             </h2>
                             <p style={{
                                 color: "#666",
                                 fontSize: "15px",
                                 margin: 0
                             }}>
-                                Kreiraj, izmijeni ili obriši police
+                                Kreiraj, izmijeni ili obriši korisnike
                             </p>
                         </div>
                         <button
-                            onClick={handleCreate}
+                            onClick={handleCreateUser}
                             style={{
                                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                                 color: "#fff",
@@ -277,11 +788,11 @@ export default function AdminDashboard({ user, onLogout }) {
                                 e.target.style.boxShadow = "0 4px 16px rgba(102, 126, 234, 0.3)";
                             }}
                         >
-                            + Nova polisa
+                            + Novi korisnik
                         </button>
                     </div>
 
-                    {error && (
+                    {usersError && (
                         <div style={{
                             padding: "16px 20px",
                             background: "rgba(239, 68, 68, 0.1)",
@@ -296,31 +807,31 @@ export default function AdminDashboard({ user, onLogout }) {
                             marginBottom: "24px"
                         }}>
                             <span style={{ fontSize: "24px" }}>⚠️</span>
-                            <span>{error}</span>
+                            <span>{usersError}</span>
                         </div>
                     )}
 
-                    {loading && (
+                    {usersLoading && (
                         <div style={{
                             textAlign: "center",
                             padding: "60px 20px",
                             color: "#666"
                         }}>
                             <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
-                            <p style={{ fontSize: "16px" }}>Učitavam police...</p>
+                            <p style={{ fontSize: "16px" }}>Učitavam korisnike...</p>
                         </div>
                     )}
 
-                    {!loading && policies.length === 0 && (
+                    {!usersLoading && users.length === 0 && (
                         <div style={{
                             textAlign: "center",
                             padding: "60px 20px",
                             color: "#666"
                         }}>
-                            <div style={{ fontSize: "48px", marginBottom: "16px" }}>📭</div>
-                            <p style={{ fontSize: "16px", marginBottom: "20px" }}>Nema kreiranih polisa</p>
+                            <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔭</div>
+                            <p style={{ fontSize: "16px", marginBottom: "20px" }}>Nema korisnika</p>
                             <button
-                                onClick={handleCreate}
+                                onClick={handleCreateUser}
                                 style={{
                                     background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                                     color: "#fff",
@@ -332,15 +843,13 @@ export default function AdminDashboard({ user, onLogout }) {
                                     fontSize: "15px"
                                 }}
                             >
-                                Kreiraj prvu polisu
+                                Kreiraj prvog korisnika
                             </button>
                         </div>
                     )}
 
-                    {!loading && policies.length > 0 && (
-                        <div style={{
-                            overflowX: "auto"
-                        }}>
+                    {!usersLoading && users.length > 0 && (
+                        <div style={{ overflowX: "auto" }}>
                             <table style={{
                                 width: "100%",
                                 borderCollapse: "separate",
@@ -360,7 +869,7 @@ export default function AdminDashboard({ user, onLogout }) {
                                         letterSpacing: "0.5px",
                                         borderRadius: "10px 0 0 10px"
                                     }}>
-                                        Tip
+                                        ID
                                     </th>
                                     <th style={{
                                         padding: "16px 20px",
@@ -371,7 +880,7 @@ export default function AdminDashboard({ user, onLogout }) {
                                         textTransform: "uppercase",
                                         letterSpacing: "0.5px"
                                     }}>
-                                        Naziv
+                                        Username
                                     </th>
                                     <th style={{
                                         padding: "16px 20px",
@@ -382,7 +891,7 @@ export default function AdminDashboard({ user, onLogout }) {
                                         textTransform: "uppercase",
                                         letterSpacing: "0.5px"
                                     }}>
-                                        Opis
+                                        Email
                                     </th>
                                     <th style={{
                                         padding: "16px 20px",
@@ -393,7 +902,7 @@ export default function AdminDashboard({ user, onLogout }) {
                                         textTransform: "uppercase",
                                         letterSpacing: "0.5px"
                                     }}>
-                                        Cijena
+                                        Uloga
                                     </th>
                                     <th style={{
                                         padding: "16px 20px",
@@ -410,8 +919,8 @@ export default function AdminDashboard({ user, onLogout }) {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {policies.map((policy) => (
-                                    <tr key={policy.id} style={{
+                                {users.map((user) => (
+                                    <tr key={user.id} style={{
                                         background: "#fff",
                                         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
                                         transition: "all 0.3s"
@@ -426,49 +935,39 @@ export default function AdminDashboard({ user, onLogout }) {
                                         }}>
                                         <td style={{
                                             padding: "20px",
-                                            borderRadius: "10px 0 0 10px"
+                                            borderRadius: "10px 0 0 10px",
+                                            fontWeight: "600",
+                                            color: "#999"
                                         }}>
-                                            <div style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "8px"
-                                            }}>
-                                                <span style={{ fontSize: "24px" }}>{getPolicyIcon(policy.type)}</span>
-                                                <span style={{
-                                                    background: "rgba(102, 126, 234, 0.1)",
-                                                    color: "#667eea",
-                                                    padding: "4px 10px",
-                                                    borderRadius: "6px",
-                                                    fontSize: "12px",
-                                                    fontWeight: "600"
-                                                }}>
-                                                        {policy.type}
-                                                    </span>
-                                            </div>
+                                            #{user.id}
                                         </td>
                                         <td style={{
                                             padding: "20px",
                                             fontWeight: "600",
                                             color: "#1a1a1a"
                                         }}>
-                                            {policy.name}
+                                            {user.username}
                                         </td>
                                         <td style={{
                                             padding: "20px",
                                             color: "#666",
-                                            fontSize: "14px",
-                                            maxWidth: "300px"
+                                            fontSize: "14px"
                                         }}>
-                                            {policy.description}
+                                            {user.email}
                                         </td>
-                                        <td style={{
-                                            padding: "20px",
-                                            fontWeight: "700",
-                                            color: "#667eea",
-                                            fontSize: "18px"
-                                        }}>
-                                            ${policy.price}
+                                        <td style={{ padding: "20px" }}>
+                                <span style={{
+                                    background: getRoleBadgeColor(user.role),
+                                    color: "#fff",
+                                    padding: "6px 12px",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    fontWeight: "600"
+                                }}>
+                                    {user.role}
+                                </span>
                                         </td>
+
                                         <td style={{
                                             padding: "20px",
                                             textAlign: "right",
@@ -480,7 +979,7 @@ export default function AdminDashboard({ user, onLogout }) {
                                                 justifyContent: "flex-end"
                                             }}>
                                                 <button
-                                                    onClick={() => handleEdit(policy)}
+                                                    onClick={() => handleEditUser(user)}
                                                     style={{
                                                         background: "#fff",
                                                         color: "#667eea",
@@ -504,7 +1003,7 @@ export default function AdminDashboard({ user, onLogout }) {
                                                     ✏️ Izmijeni
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(policy.id)}
+                                                    onClick={() => handleDeleteUser(user.id)}
                                                     style={{
                                                         background: "#fff",
                                                         color: "#ef4444",
@@ -536,7 +1035,8 @@ export default function AdminDashboard({ user, onLogout }) {
                         </div>
                     )}
                 </div>
-            </div>
+            )}
+
 
             {/* Modal for Create/Edit */}
             {showModal && (
@@ -787,6 +1287,250 @@ export default function AdminDashboard({ user, onLogout }) {
                     </div>
                 </div>
             )}
+            {/* User Modal for Create/Edit */}
+            {showUserModal && (
+                <div style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: "rgba(0, 0, 0, 0.5)",
+                    backdropFilter: "blur(4px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000,
+                    padding: "20px"
+                }}>
+                    <div style={{
+                        background: "#fff",
+                        borderRadius: "20px",
+                        padding: "40px",
+                        maxWidth: "600px",
+                        width: "100%",
+                        boxShadow: "0 25px 70px rgba(0, 0, 0, 0.3)",
+                        maxHeight: "90vh",
+                        overflowY: "auto"
+                    }}>
+                        <h2 style={{
+                            fontSize: "28px",
+                            fontWeight: "700",
+                            color: "#1a1a1a",
+                            marginBottom: "8px"
+                        }}>
+                            {editingUser ? "Izmijeni korisnika" : "Novi korisnik"}
+                        </h2>
+                        <p style={{
+                            color: "#666",
+                            fontSize: "15px",
+                            marginBottom: "32px"
+                        }}>
+                            {editingUser ? "Ažurirajte informacije o korisniku" : "Dodajte novog korisnika"}
+                        </p>
+
+                        <form onSubmit={handleUserSubmit}>
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    fontWeight: "600",
+                                    color: "#333",
+                                    marginBottom: "8px"
+                                }}>
+                                    Username *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={userFormData.username}
+                                    onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                                    required
+                                    placeholder="npr. johndoe"
+                                    style={{
+                                        width: "100%",
+                                        padding: "14px 16px",
+                                        fontSize: "15px",
+                                        border: "2px solid #e8e8e8",
+                                        borderRadius: "10px",
+                                        outline: "none",
+                                        transition: "all 0.3s",
+                                        boxSizing: "border-box"
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = "#667eea";
+                                        e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = "#e8e8e8";
+                                        e.target.style.boxShadow = "none";
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    fontWeight: "600",
+                                    color: "#333",
+                                    marginBottom: "8px"
+                                }}>
+                                    Email *
+                                </label>
+                                <input
+                                    type="email"
+                                    value={userFormData.email}
+                                    onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                                    required
+                                    placeholder="npr. john@example.com"
+                                    style={{
+                                        width: "100%",
+                                        padding: "14px 16px",
+                                        fontSize: "15px",
+                                        border: "2px solid #e8e8e8",
+                                        borderRadius: "10px",
+                                        outline: "none",
+                                        transition: "all 0.3s",
+                                        boxSizing: "border-box"
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = "#667eea";
+                                        e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = "#e8e8e8";
+                                        e.target.style.boxShadow = "none";
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    fontWeight: "600",
+                                    color: "#333",
+                                    marginBottom: "8px"
+                                }}>
+                                    Lozinka {editingUser ? "(ostavi prazno ako ne mijenjаš)" : "*"}
+                                </label>
+                                <input
+                                    type="password"
+                                    value={userFormData.password}
+                                    onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                                    required={!editingUser}
+                                    placeholder={editingUser ? "Unesite novu lozinku..." : "Unesite lozinku"}
+                                    style={{
+                                        width: "100%",
+                                        padding: "14px 16px",
+                                        fontSize: "15px",
+                                        border: "2px solid #e8e8e8",
+                                        borderRadius: "10px",
+                                        outline: "none",
+                                        transition: "all 0.3s",
+                                        boxSizing: "border-box"
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = "#667eea";
+                                        e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = "#e8e8e8";
+                                        e.target.style.boxShadow = "none";
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    fontWeight: "600",
+                                    color: "#333",
+                                    marginBottom: "8px"
+                                }}>
+                                    Uloga *
+                                </label>
+                                <select
+                                    value={userFormData.role}
+                                    onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+                                    required
+                                    style={{
+                                        width: "100%",
+                                        padding: "14px 16px",
+                                        fontSize: "15px",
+                                        border: "2px solid #e8e8e8",
+                                        borderRadius: "10px",
+                                        outline: "none",
+                                        transition: "all 0.3s",
+                                        boxSizing: "border-box",
+                                        cursor: "pointer"
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = "#667eea";
+                                        e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = "#e8e8e8";
+                                        e.target.style.boxShadow = "none";
+                                    }}
+                                >
+                                    <option value="CLIENT">CLIENT</option>
+                                    <option value="ADMIN">ADMIN</option>
+                                </select>
+                            </div>
+
+                            <div style={{
+                                display: "flex",
+                                gap: "12px",
+                                justifyContent: "flex-end"
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowUserModal(false)}
+                                    disabled={userSubmitting}
+                                    style={{
+                                        background: "#fff",
+                                        color: "#666",
+                                        border: "2px solid #e8e8e8",
+                                        borderRadius: "10px",
+                                        padding: "12px 24px",
+                                        cursor: userSubmitting ? "not-allowed" : "pointer",
+                                        fontWeight: "600",
+                                        fontSize: "15px",
+                                        transition: "all 0.3s"
+                                    }}
+                                >
+                                    Otkaži
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={userSubmitting}
+                                    style={{
+                                        background: userSubmitting
+                                            ? "#ccc"
+                                            : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                        color: "#fff",
+                                        border: "none",
+                                        borderRadius: "10px",
+                                        padding: "12px 32px",
+                                        cursor: userSubmitting ? "not-allowed" : "pointer",
+                                        fontWeight: "600",
+                                        fontSize: "15px",
+                                        boxShadow: userSubmitting
+                                            ? "none"
+                                            : "0 4px 16px rgba(102, 126, 234, 0.3)",
+                                        transition: "all 0.3s"
+                                    }}
+                                >
+                                    {userSubmitting ? "Čuvam..." : (editingUser ? "Sačuvaj izmjene" : "Kreiraj korisnika")}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

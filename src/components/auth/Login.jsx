@@ -16,9 +16,10 @@ export default function Login() {
         setLoading(true);
         try {
             const r = await login(form);
+            // Navigate to verify with the user2FAId from step 1
             navigate("/verify", { state: { user2FAId: r.user2FAId, username: form.username } });
         } catch (err) {
-            setError(err?.response?.data?.message || err.message);
+            setError(err?.response?.data?.message || err.message || "Došlo je do greške pri prijavi.");
         } finally {
             setLoading(false);
         }

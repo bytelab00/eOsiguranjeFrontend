@@ -8,9 +8,17 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import useAuth from "./hooks/useAuth";
 import AdminDashboard from "./components/AdminDashboard";
 import SuccessPage from "./components/SuccessPage.jsx";
+import CancelPage from "./components/CancelPage.jsx";
 
 // npm run dev -- --host 0.0.0.0
 function Navbar({ token, onLogout }) {
+    const navigate = useNavigate(); // Add this
+
+    const handleLogout = () => {
+        onLogout(); // Call the logout function to clear tokens
+        navigate("/"); // Redirect to homepage
+    };
+
     return (
         <nav
             style={{
@@ -75,7 +83,7 @@ function Navbar({ token, onLogout }) {
                             Dashboard
                         </Link>
                         <button
-                            onClick={onLogout}
+                            onClick={handleLogout} // Changed from onLogout to handleLogout
                             style={{
                                 background: "#fff",
                                 color: "#0b5fff",
@@ -96,6 +104,7 @@ function Navbar({ token, onLogout }) {
     );
 }
 
+// Rest of your code stays the same...
 function Landing() {
     return (
         <div style={{
@@ -162,6 +171,7 @@ function Landing() {
                 }}>
                     Prijavite se da pristupite svom korisničkom nalogu ili se registrujte da započnete.
                 </p>
+                {/*
                 <div style={{ marginTop: "40px", display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
                     <Link to="/login">
                         <button
@@ -216,7 +226,7 @@ function Landing() {
                         </button>
                     </Link>
                 </div>
-
+                */}
                 {/* Feature cards */}
                 <div style={{
                     display: "grid",
@@ -313,6 +323,7 @@ export default function App() {
                     <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginScreen />} />
                     <Route path="/verify" element={<Verify2FA onToken={loginWithToken} />} />
                     <Route path="/success" element={<SuccessPage />} />
+                    <Route path="/cancel" element={<CancelPage />} />
                     <Route
                         path="/dashboard"
                         element={
