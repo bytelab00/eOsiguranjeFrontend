@@ -10,19 +10,58 @@ export default function Register() {
 
     const onChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
+    // Password validation
+    const validatePassword = (pwd) => {
+        if (pwd.length < 6) return "Lozinka mora imati najmanje 6 karaktera.";
+        if (!/[a-z]/.test(pwd)) return "Lozinka mora sadržavati malo slovo.";
+        if (!/[0-9]/.test(pwd)) return "Lozinka mora sadržavati broj.";
+        if (!/[^A-Za-z0-9]/.test(pwd)) return "Lozinka mora sadržavati specijalni znak.";
+        return null;
+    };
+
+    // Password strength calculation (0-4)
+    const getPasswordStrength = (pwd) => {
+        let strength = 0;
+        if (pwd.length >= 6) strength++;
+        if (/[a-z]/.test(pwd)) strength++;
+        if (/[0-9]/.test(pwd)) strength++;
+        if (/[^A-Za-z0-9]/.test(pwd)) strength++;
+        return strength;
+    };
+
     const onSubmit = async e => {
         e.preventDefault();
         setError(null);
         setLoading(true);
+
+        const validation = validatePassword(form.password);
+        if (validation) {
+            setError(validation);
+            setLoading(false);
+            return;
+        }
+
         try {
-            const r = await register(form);
+            await register(form);
             navigate("/login");
         } catch (err) {
-            setError(err?.response?.data?.message || err.message);
+            const status = err?.response?.status;
+            const message = err?.response?.data?.message;
+
+            if (status === 400) {
+                setError(message || "Korisnik sa tim imenom ili emailom već postoji.");
+            } else {
+                setError(err.message || "Došlo je do greške.");
+            }
         } finally {
             setLoading(false);
         }
+
     };
+
+    const passwordStrength = getPasswordStrength(form.password);
+    const strengthColor = ["#f87171", "#fbbf24", "#60a5fa", "#10b981"]; // red, yellow, blue, green
+    const strengthLabel = ["Slaba", "Osrednja", "Dobra", "Jaka"];
 
     return (
         <div style={{
@@ -35,7 +74,7 @@ export default function Register() {
             position: "relative",
             overflow: "hidden"
         }}>
-            {/* Background decorative elements */}
+            {/* Background decorations */}
             <div style={{
                 position: "absolute",
                 top: "-10%",
@@ -92,10 +131,7 @@ export default function Register() {
                     }}>
                         Kreirajte nalog
                     </h2>
-                    <p style={{
-                        color: "#666",
-                        fontSize: "15px"
-                    }}>
+                    <p style={{ color: "#666", fontSize: "15px" }}>
                         Pridružite se eOsiguranju danas
                     </p>
                 </div>
@@ -108,9 +144,7 @@ export default function Register() {
                             fontWeight: "600",
                             color: "#333",
                             marginBottom: "8px"
-                        }}>
-                            Korisničko ime
-                        </label>
+                        }}>Korisničko ime</label>
                         <input
                             name="username"
                             placeholder="Unesite korisničko ime"
@@ -127,14 +161,6 @@ export default function Register() {
                                 transition: "all 0.3s",
                                 boxSizing: "border-box"
                             }}
-                            onFocus={(e) => {
-                                e.target.style.borderColor = "#667eea";
-                                e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
-                            }}
-                            onBlur={(e) => {
-                                e.target.style.borderColor = "#e8e8e8";
-                                e.target.style.boxShadow = "none";
-                            }}
                         />
                     </div>
 
@@ -145,9 +171,7 @@ export default function Register() {
                             fontWeight: "600",
                             color: "#333",
                             marginBottom: "8px"
-                        }}>
-                            Email adresa
-                        </label>
+                        }}>Email adresa</label>
                         <input
                             name="email"
                             placeholder="vas@email.com"
@@ -165,30 +189,20 @@ export default function Register() {
                                 transition: "all 0.3s",
                                 boxSizing: "border-box"
                             }}
-                            onFocus={(e) => {
-                                e.target.style.borderColor = "#667eea";
-                                e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
-                            }}
-                            onBlur={(e) => {
-                                e.target.style.borderColor = "#e8e8e8";
-                                e.target.style.boxShadow = "none";
-                            }}
                         />
                     </div>
 
-                    <div style={{ marginBottom: "24px" }}>
+                    <div style={{ marginBottom: "8px" }}>
                         <label style={{
                             display: "block",
                             fontSize: "14px",
                             fontWeight: "600",
                             color: "#333",
                             marginBottom: "8px"
-                        }}>
-                            Lozinka
-                        </label>
+                        }}>Lozinka</label>
                         <input
                             name="password"
-                            placeholder="Minimum 6 karaktera"
+                            placeholder="Minimum 6 karaktera, broj, malo slovo i simbol"
                             type="password"
                             value={form.password}
                             onChange={onChange}
@@ -203,16 +217,32 @@ export default function Register() {
                                 transition: "all 0.3s",
                                 boxSizing: "border-box"
                             }}
-                            onFocus={(e) => {
-                                e.target.style.borderColor = "#667eea";
-                                e.target.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
-                            }}
-                            onBlur={(e) => {
-                                e.target.style.borderColor = "#e8e8e8";
-                                e.target.style.boxShadow = "none";
-                            }}
                         />
                     </div>
+
+                    {/* Live password strength meter */}
+                    {form.password && (
+                        <div style={{
+                            height: "8px",
+                            width: "100%",
+                            background: "#e5e7eb",
+                            borderRadius: "4px",
+                            marginBottom: "16px",
+                            overflow: "hidden"
+                        }}>
+                            <div style={{
+                                height: "100%",
+                                width: `${(passwordStrength / 4) * 100}%`,
+                                background: strengthColor[passwordStrength - 1] || "#e5e7eb",
+                                transition: "width 0.3s"
+                            }} />
+                        </div>
+                    )}
+                    {form.password && (
+                        <p style={{ fontSize: "13px", color: strengthColor[passwordStrength - 1] || "#000", marginTop: "0", marginBottom: "16px" }}>
+                            Snaga lozinke: {strengthLabel[passwordStrength - 1] || "Prekratka"}
+                        </p>
+                    )}
 
                     <button
                         type="submit"
@@ -229,18 +259,6 @@ export default function Register() {
                             cursor: loading ? "not-allowed" : "pointer",
                             transition: "all 0.3s",
                             boxShadow: loading ? "none" : "0 4px 20px rgba(102, 126, 234, 0.4)",
-                        }}
-                        onMouseEnter={(e) => {
-                            if (!loading) {
-                                e.target.style.transform = "translateY(-2px)";
-                                e.target.style.boxShadow = "0 6px 24px rgba(102, 126, 234, 0.5)";
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (!loading) {
-                                e.target.style.transform = "translateY(0)";
-                                e.target.style.boxShadow = "0 4px 20px rgba(102, 126, 234, 0.4)";
-                            }
                         }}
                     >
                         {loading ? "Kreiranje naloga..." : "Registruj se"}

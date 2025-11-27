@@ -15,8 +15,8 @@ function Navbar({ token, onLogout }) {
     const navigate = useNavigate(); // Add this
 
     const handleLogout = () => {
-        onLogout(); // Call the logout function to clear tokens
-        navigate("/"); // Redirect to homepage
+        onLogout();
+        navigate("/");
     };
 
     return (

@@ -63,7 +63,7 @@ export default function Verify2FA({ onToken }) {
             // 1. Call the API
             const response = await verify2FA({ user2FAId, code });
 
-            // 2. CRITICAL FIX: Extract data based on your backend JSON structure
+            // 2. Extract data based on your backend JSON structure
             const { accessToken, refreshToken, role } = response;
 
             // 3. Store in LocalStorage (Required for ProtectedRoute)
