@@ -1247,8 +1247,28 @@ export default function AdminDashboard({ user }) {
                                 <input
                                     type="number"
                                     step="0.01"
+                                    min="0"
                                     value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        // Dozvoli samo pozitivne brojeve ili prazan string
+                                        if (value === '' || parseFloat(value) > 0) {
+                                            setFormData({ ...formData, price: value });
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        // Blokiraj unos - + e E znakova
+                                        if (['-', '+', 'e', 'E'].includes(e.key)) {
+                                            e.preventDefault();
+                                        }
+                                    }}
+                                    onPaste={(e) => {
+                                        // Blokiraj paste negativnih brojeva
+                                        const pastedText = e.clipboardData.getData('text');
+                                        if (parseFloat(pastedText) < 0 || isNaN(parseFloat(pastedText))) {
+                                            e.preventDefault();
+                                        }
+                                    }}
                                     required
                                     placeholder="49.99"
                                     style={{

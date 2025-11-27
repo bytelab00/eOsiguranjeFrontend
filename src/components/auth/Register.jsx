@@ -49,7 +49,6 @@ export default function Register() {
             const message = err?.response?.data?.message;
 
             if (status === 400) {
-                // Pretpostavljamo da backend šalje poruku da korisnik/email postoji
                 setError(message || "Korisnik sa tim imenom ili emailom već postoji.");
             } else {
                 setError(err.message || "Došlo je do greške.");

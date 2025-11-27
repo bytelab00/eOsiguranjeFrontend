@@ -15,7 +15,7 @@ export default function Dashboard({ user }) {
     const fetchPolicies = async () => {
         try {
             setLoading(true);
-            // ✅ Use api instance - no need to manually add token or base URL
+            // Use api instance - no need to manually add token or base URL
             const response = await api.get("/policies");
             setPolicies(response.data);
             setError(null);
@@ -29,7 +29,7 @@ export default function Dashboard({ user }) {
     const handlePurchase = async (policyId) => {
         try {
             setPurchasing(policyId);
-            // ✅ Use api instance
+            //  Use api instance
             const response = await api.post(
                 `/purchase/create-checkout-session?policyId=${policyId}`
             );
